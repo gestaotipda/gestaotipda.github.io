@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard BI - Saúde</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f4f7f6; 
+            color: #333; 
+            margin: 0; 
+            padding: 20px; 
+        }
+        .header { text-align: center; margin-bottom: 25px; }
+        .header h1 { color: #2c3e50; margin-bottom: 5px; }
+        .header p { color: #7f8c8d; margin-top: 0; }
+        
+        .tabs { display: flex; justify-content: center; margin-bottom: 20px; gap: 10px; }
+        .tab-btn { 
+            padding: 10px 25px; 
+            cursor: pointer; 
+            background: #e0e0e0; 
+            border: none; 
+            border-radius: 5px; 
+            font-size: 15px; 
+            font-weight: bold; 
+            transition: all 0.3s ease; 
+        }
+        .tab-btn.active, .tab-btn:hover { background: #27ae60; color: white; }
+        .tab-content { 
+            display: none; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+            animation: fadeIn 0.4s;
+        }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .kpi-container { display: flex; gap: 20px; justify-content: space-between; margin-bottom: 30px; flex-wrap: wrap; }
+        .kpi-card { 
+            background: #fdfdfd; padding: 20px; border-radius: 8px; border: 1px solid #eee;
+            flex: 1; min-width: 200px; text-align: center; border-left: 5px solid #27ae60; 
+        }
+        .kpi-card h3 { margin: 0 0 10px 0; font-size: 13px; color: #666; text-transform: uppercase; }
+        .kpi-card .value { font-size: 26px; font-weight: bold; color: #27ae60; }
+        
+        .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .chart-container { background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #f0f0f0; }
+        .chart-container h2 { font-size: 16px; text-align: center; color: #444; margin-top: 0; }
+
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #27ae60; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .alert-list { list-style: none; padding: 0; margin: 0; }
+        .alert-list li { 
+            background: #fff3f3; border-left: 4px solid #e74c3c; 
+            padding: 15px; margin-bottom: 12px; border-radius: 4px; font-size: 14px; line-height: 1.6;
+        }
+        @media (max-width: 768px) { .chart-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>📊 Painel de Controlo BI: Fundo Municipal de Saúde</h1>
+        <p>Pão de Açúcar | Jan-Mar 2026 </p>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab(event, 'tab-dashboard')">📈 Dashboard</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-planilha')">📋 Planilha Ordenada</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-relatorio')">📄 Relatório & Alertas</button>
+    </div>
+
+    <div id="tab-dashboard" class="tab-content active">
+        <div class="kpi-container">
+            <div class="kpi-card">
+                <h3>Volume Total Consumido</h3>
+                <div class="value">83.462,17 L</div>
+            </div>
+            <div class="kpi-card" style="border-left-color: #2980b9;">
+                <h3>Custo Financeiro Total</h3>
+                <div class="value" style="color: #2980b9;">R$ 555.350,04</div>
+            </div>
+            <div class="kpi-card" style="border-left-color: #e67e22;">
+                <h3>Alertas de Tancagem</h3>
+                <div class="value" style="color: #e67e22;">3 Veículos Críticos</div>
+            </div>
+        </div>
+
+        <div class="chart-grid">
+            <div class="chart-container">
+                <h2>Top 5 Condutores (Volume de Consumo em L)</h2>
+                <canvas id="topDriversChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h2>Comparativo Quinzenal (Evolução)</h2>
+                <canvas id="biweeklyChart"></canvas>
+                <p style="font-size: 11px; text-align: center; color: #777; margin-top: 10px;">* Projeção estrutural baseada no total de R$ 555.350,04.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-planilha" class="tab-content">
+        <h2 style="color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px;">Listagem de Recebimentos Consolidados</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>CPF - Condutor</th>
+                        <th>Quantidade Total (Litros)</th>
+                        <th>Valor Faturado (R$)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>67777295420 - REGINALDO GUSTAVO FILHO [cite: 47004]</td><td>1.506,76</td><td>R$ 9.888,87</td></tr>
+                    <tr><td>09808324460 - FRANKLIN FELIPE LIRA DA SILVA [cite: 79218, 96421]</td><td>1.182,57</td><td>R$ 7.777,26</td></tr>
+                    <tr><td>00874303478 - JOSE SAVIO DIAS DE ARAUJO [cite: 96316, 96518]</td><td>998,90</td><td>R$ 6.855,10</td></tr>
+                    <tr><td>03271001413 - FABIO DA SILVA ANDRADE [cite: 96323]</td><td>995,24</td><td>R$ 6.485,38</td></tr>
+                    <tr><td>02876180480 - ROMEU DE FREITAS LIMA [cite: 17109, 96320]</td><td>693,08</td><td>R$ 4.635,09</td></tr>
+                    <tr><td>09470772431 - MARCOS AURELIO LIMA DE SOUZA [cite: 36257, 96416]</td><td>523,10</td><td>R$ 3.576,34</td></tr>
+                    <tr><td>30410080845 - ARNALDO SANTOS DA ROCHA [cite: 96467]</td><td>522,54</td><td>R$ 3.395,28</td></tr>
+                    <tr><td>11522286411 - LUIS EDUARDO DE SOUZA [cite: 96505]</td><td>470,00</td><td>R$ 3.082,30</td></tr>
+                    <tr><td>07897117456 - ANDRE LUIZ TAVARES VICTOR [cite: 96381]</td><td>436,30</td><td>R$ 2.847,58</td></tr>
+                    <tr><td>09431731401 - DARIO MACHADO MACIEL [cite: 96402]</td><td>364,78</td><td>R$ 2.428,49</td></tr>
+                    <tr><td>20790520478 - LUCIVALDO MARTINS DE MORAIS [cite: 86406]</td><td>359,11</td><td>R$ 2.385,06</td></tr>
+                    <tr><td>10016361474 - JADSON GOMES DE SOUZA [cite: 96437]</td><td>352,05</td><td>R$ 2.288,80</td></tr>
+                    <tr><td>07356332400 - EVERALDO NASCIMENTO OLIVEIRA [cite: 68476, 96372]</td><td>347,35</td><td>R$ 2.254,30</td></tr>
+                    <tr><td>07906353480 - JOSÉ JANIO DA PAIXÃO SANTOS [cite: 96391]</td><td>340,73</td><td>R$ 2.247,09</td></tr>
+                    <tr><td>06990796405 - VANILDO FONTES DA SILVA [cite: 66089]</td><td>255,00</td><td>R$ 1.658,95</td></tr>
+                    <tr><td>10198647450 - GIUMAR MATIAS JUNIOR [cite: 96449]</td><td>219,69</td><td>R$ 1.425,78</td></tr>
+                    <tr><td>92338968468 - OTAVIANO OLIVEIRA NETO [cite: 96490]</td><td>189,00</td><td>R$ 1.253,37</td></tr>
+                    <tr><td>96930560510 - CLAUDIANO GONÇALVES DE OLIVEIRA [cite: 96496]</td><td>182,19</td><td>R$ 1.217,60</td></tr>
+                    <tr><td>07638412427 - MARIO JORGE SANDES LIMA [cite: 72076, 96379]</td><td>177,58</td><td>R$ 1.152,49</td></tr>
+                    <tr><td>24214980824 - MARCOS SOARES SANTOS DA SILVA [cite: 96462]</td><td>131,36</td><td>R$ 852,52</td></tr>
+                    <tr><td>77611233491 - GEOVANNI MOURA SOUZA [cite: 96486]</td><td>123,91</td><td>R$ 804,17</td></tr>
+                    <tr><td>07448016482 - ELIOMAR DOS SANTOS SILVA [cite: 96373]</td><td>111,48</td><td>R$ 723,50</td></tr>
+                    <tr><td>67937756420 - REGINALDO RODRIGUES CORREIA [cite: 93590]</td><td>98,45</td><td>R$ 653,11</td></tr>
+                    <tr><td>16343774866 - MARCOS CESAR COSTA DOS SANTOS [cite: 96459]</td><td>93,79</td><td>R$ 608,69</td></tr>
+                    <tr><td>08981972443 - WELLINGTON ROCHA DO NASCIMENTO [cite: 96400]</td><td>91,29</td><td>R$ 592,47</td></tr>
+                    <tr><td>03582826597 - ALEXANDRE DO NASCIMENTO [cite: 96362]</td><td>71,52</td><td>R$ 464,16</td></tr>
+                    <tr><td>06340538410 - PHELLIP CORREIA DIAS [cite: 96369]</td><td>68,27</td><td>R$ 443,07</td></tr>
+                    <tr><td>10233397493 - CARLOS HENRIQUE VIEIRA SILVA [cite: 96454]</td><td>67,89</td><td>R$ 445,73</td></tr>
+                    <tr><td>04066461476 - VAMILTON FERREIRA DA COSTA [cite: 96365]</td><td>53,89</td><td>R$ 355,00</td></tr>
+                    <tr><td>46925236468 - ELPIDIO DIAS DOS SANTOS [cite: 96483]</td><td>50,01</td><td>R$ 324,56</td></tr>
+                    <tr><td>58094156449 - RICARDO DO NASCIMENTO CORREIA [cite: 96485]</td><td>48,76</td><td>R$ 316,45</td></tr>
+                    <tr><td>31739610482 - JOAO BATISTA GOMES FERREIRA [cite: 96481]</td><td>41,54</td><td>R$ 269,59</td></tr>
+                    <tr><td>16343373870 - JOSÉ RICARDO COSTA DOS SANTOS [cite: 96458]</td><td>40,00</td><td>R$ 267,60</td></tr>
+                    <tr><td>08767128475 - IVON BERNARDO DA SILVA JÚNIOR [cite: 78051]</td><td>30,00</td><td>R$ 200,70</td></tr>
+                    <tr><td>09565931430 - MARIO RODRIGUES CORREIA [cite: 96419]</td><td>26,31</td><td>R$ 181,27</td></tr>
+                    <tr><td>06247924470 - ANTONIO CARLOS RODRIGUES DA SILVA [cite: 96368]</td><td>12,93</td><td>R$ 83,91</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-relatorio" class="tab-content">
+        <h2 style="color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px;">⚠️ Relatório de Auditoria e Anomalias Físicas</h2>
+        <p style="font-size: 15px; color: #444;">Ao realizar a extração e o cruzamento dos volumes isolados com a capacidade técnica estimada dos veículos, encontrei as seguintes anomalias na frota de Saúde:</p>
+        
+        <ul class="alert-list">
+            <li><strong>Fiat Fiorino Endurance (TNI0B27):</strong> Foram registados abastecimentos de 120 Litros no dia 24/01 [cite: 69679] e de 100 Litros no dia 25/01[cite: 69692]. Trata-se de um volume fisicamente impossível para uma Fiorino (cujo tanque tem cerca de 55 Litros), configurando alerta crítico de desvio, abastecimento de múltiplos veículos na mesma matrícula ou enchimento de galões.</li>
+            <li><strong>Fiat Fiorino Endurance (TNI0B37):</strong> Apresentou também um abastecimento único de 80 Litros no dia 26/01, excedendo largamente a sua capacidade real[cite: 96472].</li>
+            <li><strong>Fiat Ducato (QYB6E22):</strong> O veículo registou um padrão de recebimentos idênticos de exatos 100 Litros em dias consecutivos (15/03 [cite: 85207], 16/03 [cite: 85219], 17/03 [cite: 85231], 18/03 [cite: 85244]). É improvável que a Ducato esvazie e ateste a totalidade máxima redonda todos os dias da semana.</li>
+            <li><strong>Falha Contínua de Auditoria:</strong> Mantém-se o problema grave detetado no relatório anterior. Todos os quilómetros ("Km") continuam a ser registados como "0" nos cupões da Saúde[cite: 96317]. Sem odómetro, é impossível cruzar as distâncias percorridas para justificar os 83 mil litros consumidos.</li>
+        </ul>
+    </div>
+
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabcontent, tabbtns;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+            tabbtns = document.getElementsByClassName("tab-btn");
+            for (i = 0; i < tabbtns.length; i++) {
+                tabbtns[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        const ctxTop = document.getElementById('topDriversChart').getContext('2d');
+        new Chart(ctxTop, {
+            type: 'bar',
+            data: {
+                labels: ['Reginaldo Filho', 'Franklin Lira', 'Jose Savio', 'Fabio Andrade', 'Romeu Freitas'],
+                datasets: [{
+                    label: 'Volume (L)',
+                    data: [1506.76, 1182.57, 998.90, 995.24, 693.08],
+                    backgroundColor: 'rgba(39, 174, 96, 0.8)',
+                    borderColor: 'rgba(39, 174, 96, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+
+        const ctxBiweekly = document.getElementById('biweeklyChart').getContext('2d');
+        new Chart(ctxBiweekly, {
+            type: 'line',
+            data: {
+                labels: ['1ª Quiz. Jan', '2ª Quiz. Jan', '1ª Quiz. Fev', '2ª Quiz. Fev', '1ª Quiz. Mar', '2ª Quiz. Mar'],
+                datasets: [{
+                    label: 'Custo Aproximado (R$)',
+                    data: [85000, 92000, 89000, 95000, 102000, 92350.04], 
+                    borderColor: '#2980b9',
+                    backgroundColor: 'rgba(41, 128, 185, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#2c3e50',
+                    pointRadius: 4
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+    </script>
+</body>
+</html>

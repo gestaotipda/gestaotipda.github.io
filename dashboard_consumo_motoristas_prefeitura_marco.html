@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard BI - Prefeitura Geral</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f4f7f6; 
+            color: #333; 
+            margin: 0; 
+            padding: 20px; 
+        }
+        .header { text-align: center; margin-bottom: 25px; }
+        .header h1 { color: #2c3e50; margin-bottom: 5px; }
+        .header p { color: #7f8c8d; margin-top: 0; }
+        
+        .tabs { display: flex; justify-content: center; margin-bottom: 20px; gap: 10px; }
+        .tab-btn { 
+            padding: 10px 25px; 
+            cursor: pointer; 
+            background: #e0e0e0; 
+            border: none; 
+            border-radius: 5px; 
+            font-size: 15px; 
+            font-weight: bold; 
+            transition: all 0.3s ease; 
+        }
+        .tab-btn.active, .tab-btn:hover { background: #8e44ad; color: white; }
+        .tab-content { 
+            display: none; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+            animation: fadeIn 0.4s;
+        }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .kpi-container { display: flex; gap: 20px; justify-content: space-between; margin-bottom: 30px; flex-wrap: wrap; }
+        .kpi-card { 
+            background: #fdfdfd; padding: 20px; border-radius: 8px; border: 1px solid #eee;
+            flex: 1; min-width: 200px; text-align: center; border-left: 5px solid #8e44ad; 
+        }
+        .kpi-card h3 { margin: 0 0 10px 0; font-size: 13px; color: #666; text-transform: uppercase; }
+        .kpi-card .value { font-size: 26px; font-weight: bold; color: #8e44ad; }
+        
+        .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .chart-container { background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #f0f0f0; }
+        .chart-container h2 { font-size: 16px; text-align: center; color: #444; margin-top: 0; margin-bottom: 15px;}
+
+        /* Ajuste para o gráfico Donut não ficar gigante */
+        .donut-wrapper { position: relative; width: 70%; margin: 0 auto; }
+
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #8e44ad; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .alert-list { list-style: none; padding: 0; margin: 0; }
+        .alert-list li { 
+            background: #fff3f3; border-left: 4px solid #e74c3c; 
+            padding: 15px; margin-bottom: 12px; border-radius: 4px; font-size: 14px; line-height: 1.6;
+        }
+        @media (max-width: 768px) { .chart-grid { grid-template-columns: 1fr; } .donut-wrapper { width: 100%; } }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>📊 Painel de Controlo BI: Prefeitura Consolidada</h1>
+        <p>Pão de Açúcar | Jan-Mar 2026 (Múltiplas Secretarias)</p>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab(event, 'tab-dashboard')">📈 Dashboard & Comparativos</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-planilha')">📋 Planilha de Operadores</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-relatorio')">📄 Relatório & Alertas</button>
+    </div>
+
+    <div id="tab-dashboard" class="tab-content active">
+        <div class="kpi-container">
+            <div class="kpi-card">
+                <h3>Volume Total Consumido</h3>
+                <div class="value">46.628,69 L</div>
+            </div>
+            <div class="kpi-card" style="border-left-color: #2980b9;">
+                <h3>Custo Financeiro Total</h3>
+                <div class="value" style="color: #2980b9;">R$ 307.067,37</div>
+            </div>
+            <div class="kpi-card" style="border-left-color: #c0392b;">
+                <h3>Unidade Mais Onerosa</h3>
+                <div class="value" style="color: #c0392b; font-size: 20px; line-height: 1.3; margin-top: 5px;">Infraestrutura e<br>Transporte</div>
+            </div>
+        </div>
+
+        <div class="chart-grid">
+            <div class="chart-container">
+                <h2>Top 5 Condutores Globais (Volume em L)</h2>
+                <canvas id="topDriversChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h2>Comparativo por Secretaria (L)</h2>
+                <div class="donut-wrapper">
+                    <canvas id="secretariatsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-planilha" class="tab-content">
+        <h2 style="color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px;">Top 5 Condutores - Consolidação Geral</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>CPF - Condutor</th>
+                        <th>Secretaria (Predominante)</th>
+                        <th>Quantidade Total (L)</th>
+                        <th>Valor Faturado (R$)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>03482958475 - JOSÉ FRANCISCO LISBOA</td><td>Infraestrutura</td><td>4.889,78</td><td>R$ 32.225,11</td></tr>
+                    <tr><td>07546248469 - JORGE WASHIGTON ALVES</td><td>Infraestrutura</td><td>2.021,79</td><td>R$ 13.341,21</td></tr>
+                    <tr><td>11118704460 - RODOLFO SIMÕES SANTOS</td><td>Agricultura</td><td>1.658,59</td><td>R$ 10.983,15</td></tr>
+                    <tr><td>07838532469 - EGUINALDO MARTINS RIBEIRO</td><td>Agricultura</td><td>1.198,45</td><td>R$ 7.878,26</td></tr>
+                    <tr><td>02046455495 - LUCIVANIO DOS SANTOS</td><td>Infraestrutura</td><td>956,91</td><td>R$ 6.210,40</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p style="font-size: 13px; color: #777; margin-top: 15px;">* Nota: O condutor José Francisco (Camião Pipa Mercedes Atron 2729) é, individualmente, responsável por mais de 10% de todo o orçamento de combustível destas secretarias juntas.</p>
+    </div>
+
+    <div id="tab-relatorio" class="tab-content">
+        <h2 style="color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px;">⚠️ Relatório de Auditoria e Anomalias Físicas</h2>
+        <p style="font-size: 15px; color: #444;">Ao consolidar as Secretarias, as falhas de controlo mantiveram-se consistentes, apresentando as seguintes incidências críticas:</p>
+        
+        <ul class="alert-list">
+            <li><strong>Veículos Ligeiros (Alta Frequência):</strong> O veículo VW/POLO (RGW0H34 - 50 Litros de tanque) abasteceu repetidamente litragens altíssimas em curtos períodos de tempo (ex: 47,39 Litros no dia 24/01 e mais 46,00 Litros no dia 25/01). Esvaziar um tanque completo de 50L de um carro ligeiro num perímetro municipal no intervalo de um dia para o outro é estatisticamente improvável.</li>
+            <li><strong>Camião Pipa no Limite (QLF0601):</strong> O Mercedes Atron 2729 realizou abastecimentos de 243L a 249L em Fevereiro. Sendo o limite do tanque deste veículo frequentemente em redor dos 275L-300L, estas entradas representam abastecimentos de "tanque completamente seco" para "tanque cheio", padrão difícil de ocorrer de forma tão constante e redonda na operação pesada.</li>
+            <li><strong>Falha Contínua de Auditoria (Grave):</strong> Mantém-se a ausência sistemática de preenchimento da quilometragem (Km) nos cupões. Todos os 46.628 Litros foram dispensados sob a métrica "Km: 0", anulando a capacidade da gestão pública de comprovar que o combustível foi de facto gasto nas rotas oficiais.</li>
+        </ul>
+    </div>
+
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabcontent, tabbtns;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+            tabbtns = document.getElementsByClassName("tab-btn");
+            for (i = 0; i < tabbtns.length; i++) {
+                tabbtns[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        // Gráfico de Barras: Top 5
+        const ctxTop = document.getElementById('topDriversChart').getContext('2d');
+        new Chart(ctxTop, {
+            type: 'bar',
+            data: {
+                labels: ['José Francisco', 'Jorge Washigton', 'Rodolfo Simões', 'Eguinaldo Martins', 'Lucivanio Santos'],
+                datasets: [{
+                    label: 'Volume (L)',
+                    data: [4889.78, 2021.79, 1658.59, 1198.45, 956.91],
+                    backgroundColor: 'rgba(142, 68, 173, 0.8)',
+                    borderColor: 'rgba(142, 68, 173, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+
+        // Gráfico Donut: Comparativo de Secretarias
+        const ctxSecretariats = document.getElementById('secretariatsChart').getContext('2d');
+        new Chart(ctxSecretariats, {
+            type: 'doughnut',
+            data: {
+                labels: ['Infraestrutura e Transp.', 'Agricultura e Meio Amb.', 'Administração', 'Gabinete / Outros'],
+                datasets: [{
+                    data: [38562.19, 3775.56, 3217.83, 1073.11],
+                    backgroundColor: [
+                        '#e74c3c', // Vermelho (Infra)
+                        '#27ae60', // Verde (Agri)
+                        '#2980b9', // Azul (Admin)
+                        '#95a5a6'  // Cinza (Outros)
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: { 
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { 
+                    legend: { position: 'bottom' } 
+                } 
+            }
+        });
+    </script>
+</body>
+</html>
